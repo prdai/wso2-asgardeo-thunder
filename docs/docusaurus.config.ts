@@ -20,6 +20,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 import type {Config} from '@docusaurus/types';
 import {themes as prismThemes} from 'prism-react-renderer';
 import thunderConfig from './docusaurus.thunder.config';
+import llmsOriginRelativePlugin from './plugins/llmsOriginRelativePlugin';
 import personaPlugin from './plugins/personaPlugin';
 import webpackPlugin from './plugins/webpackPlugin';
 
@@ -83,6 +84,7 @@ const config: Config = {
         description: thunderConfig.project.description,
       },
     ],
+    llmsOriginRelativePlugin,
   ],
 
   presets: [
