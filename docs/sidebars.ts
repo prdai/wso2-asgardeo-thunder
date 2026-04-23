@@ -26,7 +26,8 @@ import thunderConfig from './docusaurus.thunder.config';
 
 // TODO: Use `@wso2/oxygen-ui-icons` in the sidebar. Currently, there's only a React wrapper available, so we need to create custom SVG icons for the sidebar until we have a web component version of the icons.
 
-const llmsTxtHref = `pathname:///${thunderConfig.documentation.deployment.production.baseUrl}/llms.txt`;
+const productionBaseUrl = thunderConfig.documentation.deployment.production.baseUrl.replace(/^\/+|\/+$/g, '');
+const llmsTxtHref = `pathname:///${productionBaseUrl}/llms.txt`;
 
 /**
  * Creating a sidebar enables you to:

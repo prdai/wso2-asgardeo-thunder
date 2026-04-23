@@ -16,14 +16,11 @@
  * under the License.
  */
 
-import {access, readFile, writeFile} from 'fs/promises';
+import {readFile, writeFile} from 'fs/promises';
 import {join} from 'path';
-import {setTimeout as sleep} from 'timers/promises';
 import type {Plugin} from '@docusaurus/types';
 
 const llmsFiles = ['llms.txt', 'llms-full.txt'];
-const llmsGenerationTimeoutMs = 30000;
-const llmsGenerationPollIntervalMs = 100;
 
 const isMissingFileError = (error: unknown): boolean => {
   if (typeof error !== 'object' || error === null || !('code' in error)) {
@@ -43,26 +40,6 @@ const normalizeBaseUrl = (baseUrl: string | undefined): string => {
   return withLeadingSlash.endsWith('/') ? withLeadingSlash : `${withLeadingSlash}/`;
 };
 
-const waitForFile = async (filePath: string): Promise<boolean> => {
-  const deadline = Date.now() + llmsGenerationTimeoutMs;
-
-  while (Date.now() < deadline) {
-    try {
-      await access(filePath);
-
-      return true;
-    } catch (error) {
-      if (!isMissingFileError(error)) {
-        throw error;
-      }
-
-      await sleep(llmsGenerationPollIntervalMs);
-    }
-  }
-
-  return false;
-};
-
 // TODO: Remove this plugin once both of the following are resolved:
 // 1. docusaurus-plugin-llms adds native support for origin-relative URL generation
 //    (tracked at https://github.com/rachfop/docusaurus-plugin-llms/issues/42).
@@ -77,11 +54,6 @@ export default function llmsOriginRelativePlugin(): Plugin {
     async postBuild({siteConfig, outDir}) {
       const baseUrl = normalizeBaseUrl(siteConfig.baseUrl);
       const absoluteBaseUrl = `${siteConfig.url.replace(/\/$/, '')}${baseUrl}`;
-      const llmsTxtPath = join(outDir, 'llms.txt');
-
-      if (!(await waitForFile(llmsTxtPath))) {
-        return;
-      }
 
       for (const file of llmsFiles) {
         const filePath = join(outDir, file);
