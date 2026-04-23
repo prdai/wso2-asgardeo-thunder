@@ -19,6 +19,7 @@
 package executor
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -496,7 +497,58 @@ func (suite *EmailExecutorTestSuite) TestExecute_SendMode_ClientError() {
 	suite.Equal("Failed to send email", resp.FailureReason)
 }
 
-func (suite *EmailExecutorTestSuite) TestExecute_SendMode_ServerError() {
+func (suite *EmailExecutorTestSuite) TestExecute_SendMode_KnownSMTPErrors() {
+	cases := []struct {
+		name    string
+		sendErr error
+	}{
+		{"SMTPConnectionError", email.ErrorSMTPConnection},
+		{"SMTPAuthError", email.ErrorSMTPAuth},
+		{"EmailSendFailedError", email.ErrorEmailSendFailed},
+	}
+
+	for _, tc := range cases {
+		suite.Run(tc.name, func() {
+			suite.SetupTest()
+
+			ctx := &core.NodeContext{
+				ExecutionID:  "test-execution-id",
+				ExecutorMode: ExecutorModeSend,
+				UserInputs: map[string]string{
+					"email": "user@example.com",
+				},
+				RuntimeData: map[string]string{
+					common.RuntimeKeyInviteLink: "https://localhost:5190/gate/invite?executionId=test&inviteToken=abc",
+				},
+				NodeProperties: map[string]interface{}{
+					"emailTemplate": "USER_INVITE",
+				},
+			}
+
+			suite.mockTemplateService.On("Render",
+				mock.Anything,
+				template.ScenarioUserInvite,
+				template.TemplateTypeEmail,
+				mock.Anything,
+			).Return(&template.RenderedTemplate{
+				Subject: "You're Invited to Register",
+				Body:    "<html><body>Complete Registration</body></html>",
+				IsHTML:  true,
+			}, nil)
+
+			suite.mockEmailClient.On("Send", mock.Anything).Return(tc.sendErr)
+
+			resp, err := suite.executor.Execute(ctx)
+
+			suite.NoError(err)
+			suite.Equal(common.ExecFailure, resp.Status)
+			suite.Equal("Failed to send email", resp.FailureReason)
+			suite.Empty(resp.AdditionalData[common.DataEmailSent])
+		})
+	}
+}
+
+func (suite *EmailExecutorTestSuite) TestExecute_SendMode_UnexpectedError() {
 	ctx := &core.NodeContext{
 		ExecutionID:  "test-execution-id",
 		ExecutorMode: ExecutorModeSend,
@@ -522,7 +574,7 @@ func (suite *EmailExecutorTestSuite) TestExecute_SendMode_ServerError() {
 		IsHTML:  true,
 	}, nil)
 
-	suite.mockEmailClient.On("Send", mock.Anything).Return(email.ErrorSMTPConnection)
+	suite.mockEmailClient.On("Send", mock.Anything).Return(fmt.Errorf("unexpected internal error"))
 
 	resp, err := suite.executor.Execute(ctx)
 
