@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/mail"
 	"net/smtp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -57,6 +58,14 @@ func newSMTPClient(config smtpConfig) (EmailClientInterface, error) {
 			return nil, ErrorInvalidCredentials
 		}
 	}
+	address := net.JoinHostPort(config.host, strconv.Itoa(config.port))
+
+	conn, err := net.DialTimeout("tcp", address, 5*time.Second)
+	if err != nil {
+		log.GetLogger().Warn(ErrorUnreachableOrigin.Error())
+		return nil, ErrorUnreachableOrigin
+	}
+	defer conn.Close()
 	return &smtpClient{
 		config: config,
 	}, nil
